@@ -42,7 +42,7 @@ public class SendThread extends Thread{
         // 最后的心跳时间
         long lastReceiveTime = System.currentTimeMillis();
         // 保持时间
-        long keepAliveDelay = 5000;
+        long keepAliveDelay = 3000;
         // 休眠时长
         long checkDelay = 10;
         // 发送消息
@@ -59,8 +59,8 @@ public class SendThread extends Thread{
                         msg=null;
                     } catch (IOException e) {
                         e.printStackTrace();
-                        JOptionPane.showMessageDialog(null, "游戏已经开始了", "信息", JOptionPane.INFORMATION_MESSAGE);
-                        System.exit(0);
+//                        JOptionPane.showMessageDialog(null, "游戏已经开始了", "信息", JOptionPane.INFORMATION_MESSAGE);
+//                        System.exit(0);
                     }
                 }else {
                     // 心跳数据
@@ -71,8 +71,8 @@ public class SendThread extends Thread{
                             lastReceiveTime = System.currentTimeMillis();
                         } catch (IOException e) {
                             e.printStackTrace();
-                            JOptionPane.showMessageDialog(null, "游戏已经开始了", "信息", JOptionPane.INFORMATION_MESSAGE);
-                            System.exit(0);
+//                            JOptionPane.showMessageDialog(null, "游戏已经开始了", "信息", JOptionPane.INFORMATION_MESSAGE);
+//                            System.exit(0);
                         }
                     }else{
                         try {

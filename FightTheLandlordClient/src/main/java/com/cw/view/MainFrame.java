@@ -45,11 +45,11 @@ public class MainFrame extends JFrame {
     public JLabel label4 = null; // 不出
     public JLabel label5 = null; // 不出展示
     public boolean isStart = false; // 是否开始游戏
-    public boolean isCountdown = false; // 是否倒计时
+    Countdown countdown = null; // 倒计时
+    public boolean isCountdown = false; // 显示倒计时
     public int countdownX = 0; // 倒计时X
-    public int countdownY = 0; // 倒计时U
+    public int countdownY = 0; // 倒计时Y
     public int time = 0; // 倒计时剩余时间
-    Thread thread = null; // 定时任务线程
     public List<JLabel> leftLabels = new ArrayList<>(); // 存放左边的展示标签列表
     public List<JLabel> rightLabels = new ArrayList<>(); // 存放右边的展示标签列表
     public boolean isPlay = false; // 是否可以出牌
@@ -81,6 +81,9 @@ public class MainFrame extends JFrame {
     // 显示
     public void showAllPlayersInfo(List<Player> players) {
         isCountdown = false;
+        if(countdown!=null){
+            countdown.close();
+        }
         // 显示玩家名称
         isStart = true;
         myPanel.repaint();
@@ -122,6 +125,9 @@ public class MainFrame extends JFrame {
     // 抢地主方法
     public void robLandlord(List<Player> players) {
         isCountdown = false;
+        if(countdown!=null){
+            countdown.close();
+        }
         if(label1!=null){
             myPanel.remove(label1);
         }
@@ -168,6 +174,9 @@ public class MainFrame extends JFrame {
                 @Override
                 public void mousePressed(MouseEvent e) {
                     isCountdown = false;
+                    if(countdown!=null){
+                        countdown.close();
+                    }
                     // 叫地主
                     if(type==1){
                         // 开始游戏状态
@@ -195,6 +204,9 @@ public class MainFrame extends JFrame {
                 @Override
                 public void mousePressed(MouseEvent e) {
                     isCountdown = false;
+                    if(countdown!=null){
+                        countdown.close();
+                    }
                     // 不叫
                     if(type==1){
                         Message message = new Message();
@@ -232,8 +244,14 @@ public class MainFrame extends JFrame {
             });
             countdownX=540;
             countdownY=430;
+            if(countdown!=null){
+                countdown.close();
+            }
+            isCountdown = true;
+            time = currentPlayer.getMessage().getTime();
             // 倒计时
-            countdown(currentPlayer.getMessage().getTime(),players);
+            countdown = new Countdown(players,currentPlayer,0);
+            countdown.start();
         }
         myPanel.repaint();
     }
@@ -364,104 +382,114 @@ public class MainFrame extends JFrame {
     }
 
     // 倒计时处理
-    public void countdown(int time2, List<Player> players){
-        if(thread!=null){
-            isCountdown = false;
-            thread.interrupt();
+    class Countdown extends Thread{
+        public boolean isCountdown2;
+        public List<Player> players;
+        public Player currentPlayer;
+        public  int isStart;
+        public Countdown(List<Player> players, Player currentPlayer, int i) {
+            this.players = players;
+            this.currentPlayer = currentPlayer;
+            this.isStart = i;
+            this.isCountdown2 = true;
+            myPanel.repaint();
         }
-        isCountdown = true;
-        this.time = time2;
-        myPanel.repaint();
-        thread = new Thread(new Runnable(){
-            @Override
-            public void run() {
-                Timer timer = new Timer();
-                timer.schedule(new TimerTask() {
-                    @Override
-                    public void run() {
-                        time--;
-                        if(time<0){
-                            isCountdown = false;
-                            time=0;
-                            if (label1 != null) {
-                                myPanel.remove(label1);
-                            }
-                            if (label2 != null) {
-                                myPanel.remove(label2);
-                            }
-                            if(label3!=null){
-                                myPanel.remove(label3);
-                            }
-                            if(label4!=null){
-                                myPanel.remove(label4);
-                            }
-                            // 开始出牌倒计时
-                            if(currentPlayer.getMessage().getStatus()==2){
-                                boolean isPlay2 = false;
-                                for (int i = 0; i < players.size(); i++) {
-                                    if(players.get(i).getMessage().getType()==5 || players.get(i).getMessage().getType()==8){
-                                        isPlay2 = true;
-                                    }
+        @Override
+        public void run() {
+            Timer timer = new Timer();
+            timer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    time--;
+                    if(isStart==1 && receiveThread.status!=4){
+                        // 结束状态
+                        receiveThread.status = 4;
+                    }
+                    if(time<0){
+                        time = 0;
+                        isCountdown = false;
+                        if (label1 != null) {
+                            myPanel.remove(label1);
+                        }
+                        if (label2 != null) {
+                            myPanel.remove(label2);
+                        }
+                        if(label3!=null){
+                            myPanel.remove(label3);
+                        }
+                        if(label4!=null){
+                            myPanel.remove(label4);
+                        }
+                        myPanel.revalidate();
+                        myPanel.repaint();
+                        // 开始出牌倒计时
+                        if(isStart==1){
+                            boolean isPlay2 = false;
+                            for (int i = 0; i < players.size(); i++) {
+                                if(players.get(i).getMessage().getType()==5 || players.get(i).getMessage().getType()==8){
+                                    isPlay2 = true;
                                 }
-                                if(isPlay2){
-                                    // 出最小一张牌
-                                    PokerLabel pokerLabel = pokerLabels.get(pokerLabels.size()-1);
-                                    outPokerLabels.add(pokerLabel);
-                                    Collections.sort(outPokerLabels);
-                                    for (int i = 0; i < outPokerLabels.size(); i++) {
-                                        // 动态显示出来
-                                        myPanel.setComponentZOrder(outPokerLabels.get(i), 0);
-                                        GameUtil.move(outPokerLabels.get(i), 400, 300);
-                                        pokerLabels.remove(outPokerLabels.get(i));
-                                    }
-                                    // 重新移动位置
-                                    for (int i = 0; i < pokerLabels.size(); i++) {
-                                        myPanel.setComponentZOrder(pokerLabels.get(i), 0);
-                                        // 一张一张的显示出来
-                                        GameUtil.move(pokerLabels.get(i), 300+(30*i), 450);
-                                    }
+                            }
+                            if(isPlay2){
+                                // 出最小一张牌
+                                PokerLabel pokerLabel = pokerLabels.get(pokerLabels.size()-1);
+                                outPokerLabels.add(pokerLabel);
+                                Collections.sort(outPokerLabels);
+                                for (int i = 0; i < outPokerLabels.size(); i++) {
+                                    // 动态显示出来
+                                    myPanel.setComponentZOrder(outPokerLabels.get(i), 0);
+                                    GameUtil.move(outPokerLabels.get(i), 400, 300);
+                                    pokerLabels.remove(outPokerLabels.get(i));
+                                }
+                                // 重新移动位置
+                                for (int i = 0; i < pokerLabels.size(); i++) {
+                                    myPanel.setComponentZOrder(pokerLabels.get(i), 0);
+                                    // 一张一张的显示出来
+                                    GameUtil.move(pokerLabels.get(i), 300+(30*i), 450);
+                                }
 //                                    System.out.println(uname+"出");
-                                    if(pokerLabels.size()==0){
+                                if(pokerLabels.size()==0){
 //                                        JOptionPane.showMessageDialog(null, "赢了", "信息", JOptionPane.INFORMATION_MESSAGE);
-                                        // 状态
-                                        receiveThread.status = 0;
-                                    }
-
-                                }else{
-//                                    System.out.println(uname+"不出");
-                                    for (int i = 0; i < outPokerLabels.size(); i++) {
-                                        GameUtil.move(outPokerLabels.get(i), outPokerLabels.get(i).getX(), 450);
-                                    }
-                                    outPokerLabels = new ArrayList<>();
-                                    label5 = new JLabel("不出",JLabel.CENTER);
-                                    GameUtil.jLabelBtn(label5,450 , 400,Color.orange);
-                                    myPanel.add(label5);
+                                    // 状态
+                                    receiveThread.status = 0;
                                 }
-                                isPlay=false;
-                                // 等待出牌状态
-                                receiveThread.status = 4;
+                            }else{
+//                                    System.out.println(uname+"不出");
+                                for (int i = 0; i < outPokerLabels.size(); i++) {
+                                    GameUtil.move(outPokerLabels.get(i), outPokerLabels.get(i).getX(), 450);
+                                }
+                                outPokerLabels = new ArrayList<>();
+                                label5 = new JLabel("不出",JLabel.CENTER);
+                                GameUtil.jLabelBtn(label5,450 , 400,Color.orange);
+                                myPanel.add(label5);
                             }
-                            myPanel.revalidate();
-                            myPanel.repaint();
-                            cancel();
-                            timer.cancel();
-                            timer.purge();
-                            thread.interrupt();
-                        }else{
-                            if(!isCountdown){
-                                timer.cancel();
-                                timer.purge();
-                                thread.interrupt();
-                            }
+                            isPlay=false;
                             myPanel.revalidate();
                             myPanel.repaint();
                         }
+                        timer.cancel();
+                        timer.purge();
+                        interrupt();
+                    }else{
+                        if(!isCountdown2){
+                            timer.cancel();
+                            timer.purge();
+                            interrupt();
+                        }
+                        myPanel.revalidate();
+                        myPanel.repaint();
                     }
-                },0, 1000);
-            }
-        });
-        thread.start();
+                }
+            },0, 1000);
+        }
+
+        public void close(){
+            time = 0;
+            this.isCountdown2 = false;
+            isCountdown = false;
+        }
     }
+
     // 纸牌事件
     public void pokerLabelLevent(PokerLabel pokerLabel) {
         pokerLabel.addMouseListener(new MouseAdapter() {
@@ -547,18 +575,18 @@ public class MainFrame extends JFrame {
                         myPanel.remove(label4);
                         // 获胜
                         if(pokerLabels.size()==0){
-                            isPlay=false;
                             // 结束状态
                             receiveThread.status = 4;
+                            isPlay=false;
                             Message message = new Message();
                             message.setType(9);
                             message.setPokers(pokers);
                             String jsonString = JSON.toJSONString(message);
                             sendThread.setMsg(jsonString);
                         }else{
-                            isPlay=false;
-                            // 等待出牌状态
+                            // 结束状态
                             receiveThread.status = 4;
+                            isPlay=false;
                             Message message = new Message();
                             message.setType(6);
                             message.setPokers(pokers);
@@ -591,9 +619,9 @@ public class MainFrame extends JFrame {
                         label5 = new JLabel("不出",JLabel.CENTER);
                         GameUtil.jLabelBtn(label5,450 , 400,Color.orange);
                         myPanel.add(label5);
-                        isPlay=false;
-                        // 等待出牌状态
+                        // 结束状态
                         receiveThread.status = 4;
+                        isPlay=false;
                         Message message = new Message();
                         message.setType(7);
                         List<Poker> pokers = new ArrayList<>();
@@ -611,9 +639,15 @@ public class MainFrame extends JFrame {
 
             countdownX=540;
             countdownY=380;
-
+            isCountdown = false;
+            if(countdown!=null){
+                countdown.close();
+            }
+            isCountdown = true;
+            time = currentPlayer.getMessage().getTime();
             // 倒计时
-            countdown(currentPlayer.getMessage().getTime(), players);
+            countdown = new Countdown(players,currentPlayer,1);
+            countdown.start();
         }
 
 
@@ -1063,7 +1097,6 @@ public class MainFrame extends JFrame {
                     isVerify9 = false;
                     isVerify10 = false;
                 }
-                System.out.println(isVerify8);
                 // 判断是否是飞机带翅膀
                 boolean isVerify11 = outSize%4==0; // 是否偶数
                 boolean isVerify12 = outSize%5==0; // 是否偶数
@@ -1162,27 +1195,32 @@ public class MainFrame extends JFrame {
                 if(isVerify11 && num3s.size()>=2){
                     if(num3s.size()==nums.size() && num2s.size()==0 && !(nums.get(0)==17 && nums.get(1)==16)){
                         isVerify = true;
+                        isVerify11 = true;
                         playType = 11;
                         scoreP = 0;
                         for (int i = 0; i < num3s.size(); i++) {
                             scoreP+=num3s.get(i);
                         }
                     }else{
-                        isVerify = false;
+                        isVerify11 = false;
                     }
                 }
                 // 三顺同数量的对牌
                 if(isVerify12 && num3s.size()>=2){
                     if(num3s.size()==num2s.size() && nums.size()==0){
                         isVerify = true;
+                        isVerify12 = true;
                         playType = 12;
                         scoreP = 0;
                         for (int i = 0; i < num3s.size(); i++) {
                             scoreP+=num3s.get(i);
                         }
                     }else{
-                        isVerify = false;
+                        isVerify12 = false;
                     }
+                }
+                if(!isVerify11 && !isVerify12){
+                    isVerify = false;
                 }
             }
         }

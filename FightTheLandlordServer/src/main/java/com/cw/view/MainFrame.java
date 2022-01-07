@@ -29,19 +29,16 @@ public class MainFrame {
     public int robTime = 10; // 叫地主倒计时
     public int playTime = 30; // 倒计时
     public int time = 0; // 剩余倒计时
-    public boolean isCountdown = false; // 是否倒计时
     public int status = 0; // 游戏状态 0 初始化 1 抢地主中 2 开始
-    Thread thread = null; // 定时任务线程
+    Countdown countdown = null; // 倒计时类
     public int playOut = 0; // 不出轮数
     public String landlord = ""; // 谁是地主
     // 重新开始
     public void restart(){
-        if(thread!=null){
-            isCountdown = false;
-            thread.interrupt();
+        if(countdown!=null){
+            countdown.close();
         }
         landlord = "";
-        isCountdown = false;
         status = 0;
         time = 0;
         allPokers = new ArrayList<>();
@@ -92,7 +89,7 @@ public class MainFrame {
 
     // 创建一个接收线程 处理客户端信息
     class AcceptThread extends Thread{
-        public volatile boolean exit = false;
+        public boolean exit = false;
         Socket socket;
         // 最后的心跳时间
         long lastReceiveTime = System.currentTimeMillis();
@@ -140,9 +137,8 @@ public class MainFrame {
                                     // json字符串转换为json数组
                                     JSONObject messageJson = JSONObject.parseObject(msg);
                                     int type = messageJson.getInteger("type");
-                                    if(thread!=null){
-                                        isCountdown = false;
-                                        thread.interrupt();
+                                    if(countdown!=null){
+                                        countdown.close();
                                     }
                                     if(type==1||type==3){
                                         landlord = player.getName();
@@ -332,7 +328,8 @@ public class MainFrame {
         }
         rob++;
         // 倒计时
-        countdown(robTime,players.get(index).getName());
+        countdown = new Countdown(robTime,players.get(index).getName());
+        countdown.start();
         // 将玩家的信息发送客户端
         for (int i = 0; i < players.size(); i++) {
             try {
@@ -380,7 +377,8 @@ public class MainFrame {
         }
 //        System.out.println(players.get(index).getName()+":"+rob+":"+robTime);
         // 倒计时
-        countdown(robTime,players.get(index).getName());
+        countdown = new Countdown(robTime,players.get(index).getName());
+        countdown.start();
         // 将玩家的信息发送客户端
         for (int i = 0; i < players.size(); i++) {
             try {
@@ -435,98 +433,100 @@ public class MainFrame {
             }
         }
         try {
-            if(thread!=null){
-                thread.interrupt();
+            if(countdown!=null){
+                countdown.close();
             }
             Thread.sleep(1000);
             // 倒计时
-            countdown(playTime,players.get(index).getName());
+            countdown = new Countdown(playTime,players.get(index).getName());
+            countdown.start();
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
     }
-
     // 倒计时处理
-    public void countdown(int time2,String uname){
-        if(thread!=null){
-            isCountdown = false;
-            thread.interrupt();
-        }
-        if(rob>3){
-//            System.out.println(rob);
-            restart();
-        }else{
-            isCountdown = true;
+    class Countdown extends Thread{
+        public boolean isCountdown;
+        public int time;
+        public String uname;
+        public Countdown(int time2,String uname) {
             this.time = time2;
-            thread = new Thread(new Runnable(){
-                @Override
-                public void run() {
-                    Timer timer = new Timer();
-                    timer.schedule(new TimerTask() {
-                        @Override
-                        public void run() {
-                            time--;
-//                            System.out.println(rob + ":" + time);
-                            if(time<0){
-                                isCountdown = false;
-                                time=0;
-                                if(status==1){
-                                    robWho(uname);
-                                }else if(status==2){
-                                    // 出牌或不出
-                                    for (int i = 0; i < players.size(); i++) {
-                                        if(players.get(i).getName().equals(uname)){
-                                            Message message = players.get(i).getMessage();
-                                            // 必须出牌,出最小
-                                            if(message.getType()==5||message.getType()==8){
-                                                List<Poker> pokers = new ArrayList<>();
-                                                int maxId = -1;
-                                                int maxJ = -1;
-                                                int surplus = -1;
-                                                for (int j = 0; j < players.get(i).getPokers().size(); j++) {
-                                                    if(!players.get(i).getPokers().get(j).isOut()){
-                                                        surplus++;
-                                                        if(maxId<players.get(i).getPokers().get(j).getId()){
-                                                            maxId = players.get(i).getPokers().get(j).getId();
-                                                            maxJ = j;
-                                                        }
+            this.uname = uname;
+            this.isCountdown = true;
+        }
+
+        @Override
+        public void run() {
+            if(rob>3){
+//            System.out.println(rob);
+                restart();
+                interrupt();
+            }else{
+                Timer timer = new Timer();
+                timer.schedule(new TimerTask() {
+                    @Override
+                    public void run() {
+                        time--;
+                        if(time<0){
+                            time=0;
+                            if(status==1){
+                                robWho(uname);
+                            }else if(status==2){
+                                // 出牌或不出
+                                for (int i = 0; i < players.size(); i++) {
+                                    if(players.get(i).getName().equals(uname)){
+                                        Message message = players.get(i).getMessage();
+                                        // 必须出牌,出最小
+                                        if(message.getType()==5||message.getType()==8){
+                                            List<Poker> pokers = new ArrayList<>();
+                                            int maxId = -1;
+                                            int maxJ = -1;
+                                            int surplus = -1;
+                                            for (int j = 0; j < players.get(i).getPokers().size(); j++) {
+                                                if(!players.get(i).getPokers().get(j).isOut()){
+                                                    surplus++;
+                                                    if(maxId<players.get(i).getPokers().get(j).getId()){
+                                                        maxId = players.get(i).getPokers().get(j).getId();
+                                                        maxJ = j;
                                                     }
                                                 }
-                                                if(maxId!=-1){
-                                                    pokers.add(new Poker(players.get(i).getPokers().get(maxJ).getId(), players.get(i).getPokers().get(maxJ).getName(), players.get(i).getPokers().get(maxJ).getNum(), true));
-                                                    if((surplus-1)== 0){
-                                                        playEnd(uname,pokers);
-                                                    }else{
-//                                                        System.out.println(uname+"出");
-                                                        play(uname, pokers);
-                                                    }
-                                                }
-                                            }else{
-//                                                System.out.println(uname+"不出");
-                                                // 不出
-                                                notOut(uname);
                                             }
+                                            if(maxId!=-1){
+                                                pokers.add(new Poker(players.get(i).getPokers().get(maxJ).getId(), players.get(i).getPokers().get(maxJ).getName(), players.get(i).getPokers().get(maxJ).getNum(), true));
+                                                if((surplus-1)== 0){
+                                                    playEnd(uname,pokers);
+                                                }else{
+//                                                System.out.println(uname+"出");
+                                                    play(uname, pokers);
+                                                }
+                                            }
+                                        }else{
+//                                        System.out.println(uname+"不出");
+                                            // 不出
+                                            notOut(uname);
                                         }
                                     }
                                 }
+                            }
+                            timer.cancel();
+                            timer.purge();
+                            interrupt();
+                        }else{
+                            if(!isCountdown){
                                 timer.cancel();
                                 timer.purge();
-                                thread.interrupt();
-                            }else{
-                                if(!isCountdown){
-                                    timer.cancel();
-                                    timer.purge();
-                                    thread.interrupt();
-                                }
+                                interrupt();
                             }
                         }
-                    },0, 1000);
-                }
-            });
-            thread.start();
+                    }
+                },0, 1000);
+            }
         }
-
+        public void close(){
+            isCountdown = false;
+        }
     }
+
     // 出牌/通知下一个
     private void play(String uname, List<Poker> pokers) {
         playOut = 0;
@@ -575,16 +575,12 @@ public class MainFrame {
                 e.printStackTrace();
             }
         }
-        try {
-            if(thread!=null){
-                thread.interrupt();
-            }
-            Thread.sleep(50);
-            // 倒计时
-            countdown(playTime,players.get(index).getName());
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+        if(countdown!=null){
+            countdown.close();
         }
+        // 倒计时
+        countdown = new Countdown(playTime,players.get(index).getName());
+        countdown.start();
     }
 
 
@@ -630,16 +626,12 @@ public class MainFrame {
                 e.printStackTrace();
             }
         }
-        try {
-            if(thread!=null){
-                thread.interrupt();
-            }
-            Thread.sleep(50);
-            // 倒计时
-            countdown(playTime,players.get(index).getName());
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+        if(countdown!=null){
+            countdown.close();
         }
+        // 倒计时
+        countdown = new Countdown(playTime,players.get(index).getName());
+        countdown.start();
     }
 
     // 结束
