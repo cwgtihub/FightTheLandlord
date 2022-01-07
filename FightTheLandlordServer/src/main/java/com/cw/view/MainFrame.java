@@ -646,21 +646,28 @@ public class MainFrame {
     private void playEnd(String uname, List<Poker> pokers) {
         int index = 0;
         // 是否地主获胜
-        boolean isLandlordWin = false;
-
+        boolean isLandlordWin = landlord.equals(uname);
         for (int i = 0; i < players.size(); i++) {
             players.get(i).getMessage().setStatus(status);
             players.get(i).getMessage().setTime(0);
             players.get(i).getMessage().setPokers(new ArrayList<>());
             if(players.get(i).getName().equals(uname)){
-                if(landlord.equals(uname)){
-                    isLandlordWin = true;
-                    players.get(i).getMessage().setType(9);
-                }else{
-                    players.get(i).getMessage().setType(10);
-                }
+                // 获胜
+                players.get(i).getMessage().setType(9);
                 index=i;
                 players.get(i).getMessage().setPokers(pokers);
+            }else{
+                // 判断是否是地主获胜
+                if(isLandlordWin){
+                    players.get(i).getMessage().setType(10);
+                }else{
+                    // 判断当前用户是否不是地主
+                    if(!landlord.equals(players.get(i).getName())){
+                        players.get(i).getMessage().setType(9);
+                    }else{
+                        players.get(i).getMessage().setType(10);
+                    }
+                }
             }
         }
 
@@ -671,18 +678,6 @@ public class MainFrame {
                     continue;
                 }
             }
-        }
-
-        for (int i = 0; i < players.size(); i++) {
-           if(index!=i){
-               if(isLandlordWin){
-                   Message message = players.get(i).getMessage();
-                   message.setType(10);
-               }else{
-                   Message message = players.get(i).getMessage();
-                   message.setType(9);
-               }
-           }
         }
 
         // 将玩家的信息发送客户端
