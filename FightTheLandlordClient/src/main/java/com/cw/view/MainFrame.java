@@ -401,11 +401,11 @@ public class MainFrame extends JFrame {
                 @Override
                 public void run() {
                     time--;
-                    if(isStart==1 && receiveThread.status!=4){
-                        // 结束状态
-                        receiveThread.status = 4;
-                    }
-                    if(time<0){
+                    if(time<=0){
+                        if(isStart==1 && receiveThread.status!=4){
+                            // 结束状态
+                            receiveThread.status = 4;
+                        }
                         time = 0;
                         isCountdown = false;
                         if (label1 != null) {
@@ -420,6 +420,7 @@ public class MainFrame extends JFrame {
                         if(label4!=null){
                             myPanel.remove(label4);
                         }
+
                         myPanel.revalidate();
                         myPanel.repaint();
                         // 开始出牌倒计时
@@ -515,8 +516,8 @@ public class MainFrame extends JFrame {
 
     // 出牌方法
     public void play(List<Player> players) {
-        if (label5!=null){
-            myPanel.remove(label5);
+        if (label4!=null){
+            myPanel.remove(label4);
         }
         int index = 0;
         for (int i = 0; i < players.size(); i++) {
@@ -536,8 +537,12 @@ public class MainFrame extends JFrame {
             exhibition(players,index);
         }
 
+//        System.out.println(uname+":p"+currentPlayer.getMessage().getType());
         // 判断是否出牌
         if(currentPlayer.getMessage().getType()==5 || currentPlayer.getMessage().getType()==6 || currentPlayer.getMessage().getType()==8){
+            if(label5!=null){
+                myPanel.remove(label5);
+            }
             isPlay=true;
             label3 = new JLabel("出牌",JLabel.CENTER);
             GameUtil.jLabelBtn(label3,300 , 350,Color.blue);
@@ -666,6 +671,9 @@ public class MainFrame extends JFrame {
 
     // 等待出牌
     public void waiting(List<Player> players) {
+        if (label4!=null){
+            myPanel.remove(label4);
+        }
         int index = 0;
         for (int i = 0; i < players.size(); i++) {
             if(players.get(i).getName().equals(uname)){
@@ -679,7 +687,7 @@ public class MainFrame extends JFrame {
         // 展示
         exhibition(players,index);
 
-//        System.out.println("w:"+uname);
+        System.out.println("w:"+uname + receiveThread.status);
 
         if(currentPlayer.getMessage().getType()==9){
             JOptionPane.showMessageDialog(null, "赢了", "信息", JOptionPane.INFORMATION_MESSAGE);
@@ -1191,8 +1199,10 @@ public class MainFrame extends JFrame {
                     isVerify = true;
                     playType = 10;
                 }
+                boolean is3 = false;
                 // 三顺同数量的单牌
                 if(isVerify11 && num3s.size()>=2){
+                    is3 = true;
                     if(num3s.size()==nums.size() && num2s.size()==0 && !(nums.get(0)==17 && nums.get(1)==16)){
                         isVerify = true;
                         isVerify11 = true;
@@ -1207,6 +1217,7 @@ public class MainFrame extends JFrame {
                 }
                 // 三顺同数量的对牌
                 if(isVerify12 && num3s.size()>=2){
+                    is3 = true;
                     if(num3s.size()==num2s.size() && nums.size()==0){
                         isVerify = true;
                         isVerify12 = true;
@@ -1219,7 +1230,7 @@ public class MainFrame extends JFrame {
                         isVerify12 = false;
                     }
                 }
-                if(!isVerify11 && !isVerify12){
+                if(is3 && !isVerify11 && !isVerify12){
                     isVerify = false;
                 }
             }

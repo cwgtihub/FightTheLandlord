@@ -467,6 +467,7 @@ public class MainFrame {
                     @Override
                     public void run() {
                         time--;
+//                        System.out.println(uname+":"+time);
                         if(time<0){
                             time=0;
                             if(status==1){
@@ -513,6 +514,7 @@ public class MainFrame {
                             interrupt();
                         }else{
                             if(!isCountdown){
+//                                System.out.println(uname+":"+isCountdown);
                                 timer.cancel();
                                 timer.purge();
                                 interrupt();
